@@ -5,3 +5,6 @@ TAG:=latest
 build:
 	docker build -t ${REPO}:${TAG} -f Dockerfile .
 
+.PHONY: test
+test:
+	go test -v ./...
