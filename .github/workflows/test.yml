@@ -1,19 +1,16 @@
 name: test
 
-on:
-  push:
-    branches:
-      - '**'
+on: [workflow_call]
 
 permissions:
-  content: read
+  contents: read
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: action/checkout@v4
+        uses: actions/checkout@v4
       - name: Setup Golang
         uses: actions/setup-go@v4
         with:
