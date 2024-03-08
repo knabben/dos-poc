@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dospoc
+spec:
+  selector:
+    matchLabels:
+      app: dospoc
+  template:
+    metadata:
+      labels:
+        app: dospoc
+    spec:
+      containers:
+        - name: app
+          image: ttl.sh/knabben/dos-poc:latest
+          ports:
+            - name: https
+              containerPort: 6443
+              protocol: TCP
