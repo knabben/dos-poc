@@ -1,6 +1,9 @@
 name: test
 
-on: [workflow_call]
+on:
+  push:
+    branches:
+      - "**"
 
 permissions:
   contents: read
