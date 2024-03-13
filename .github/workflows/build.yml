@@ -1,0 +1,79 @@
+# Build and push is the workflow responsible to build the docker image and
+# push it to registry from the CI system.
+name: build-n-push
+
+env:
+  OCI_REPO: oci://ttl.sh/knabben/manifests/dos-poc
+
+on:
+  # only called on reusability
+  workflow_call:
+    inputs:
+      # image-name is the OCI image name passed from caller pipeline
+      image-name:
+        required: true
+        type: string
+      # mutable tag is the OCI image mutable tag
+      mutable-tag:
+        required: true
+        type: string
+      # mutable tag is the OCI image immutable tag
+      immutable-tag:
+        required: true
+        type: string
+    outputs:
+      # SHA256 hash with the OCI image registry
+      IMAGE_ID:
+        description: "Registry OCI image identifier"
+        value: ${{ jobs.buildnpush.outputs.IMAGE_ID }}
+
+jobs:
+  buildnpush:
+    runs-on: ubuntu-latest
+    outputs:
+      IMAGE_ID: ${{ steps.buildnpush.outputs.ImageID }}
+    steps:
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup Flux CLI
+        uses: fluxcd/flux2/action@main
+
+      # build and push action with image-name parameter for default
+      - name: Build and push
+        id: buildnpush
+        uses: docker/build-push-action@v5
+        with:
+          push: true
+          platforms: linux/amd64
+          tags: |
+            ${{ inputs.image-name }}:${{ inputs.immutable-tag }}
+            ${{ inputs.image-name }}:${{ inputs.mutable-tag }}
+
+      # render kustomize for manifest OCI generation
+      - name: Generate manifests
+        run: |
+          mkdir -p deploy/
+          OVERLAY=staging
+          if [[ ${{ inputs.mutable-tag }} == latest ]]; then
+            OVERLAY=production
+          fi
+          echo ${OVERLAY}
+          echo ${{ inputs.mutable-tag }}
+          kustomize build ./kustomize/overlays/${OVERLAY} | sed 's/${{ inputs.mutable-tag }}/${{ inputs.immutable-tag }}/' > ./deploy/app.yaml
+
+      # push tag to OCI registry
+      - name: Push manifests
+        run: |
+          flux push artifact $OCI_REPO:$(git rev-parse --short HEAD) \
+            --path="./deploy" \
+            --source="$(git config --get remote.origin.url)" \
+            --revision="$(git branch --show-current)@sha1:$(git rev-parse HEAD)"
+
+      - name: Deploy manifests
+        run: |
+          flux tag artifact $OCI_REPO:$(git rev-parse --short HEAD) --tag ${{ inputs.immutable-tag }}
+          flux tag artifact $OCI_REPO:$(git rev-parse --short HEAD) --tag ${{ inputs.mutable-tag }}
