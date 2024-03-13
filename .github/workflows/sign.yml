@@ -1,0 +1,49 @@
+name: sign
+
+on:
+  workflow_call:
+    inputs:
+      # image-id is the OCI image hash from the registry
+      image-id:
+        required: true
+        type: string
+      # image-id is the OCI image hash from the registry
+      image-name:
+        required: true
+        type: string
+
+env:
+  SBOM_FILE: 'sbom.${{ inputs.image-id }}.json'
+
+jobs:
+  scan-sign:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Trivy vulnerability scanner with SBOM local generation
+      - name: Run Trivy vulnerability scanner
+        id: scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ inputs.image-name }}@${{ inputs.image-id }}
+          format: cyclonedx
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+          scanners: 'vuln'
+          output: ${{ env.SBOM_FILE }}
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.4.0
+      - name: Sign image with Private KEY
+        id: sign
+        run: |
+          cosign attest \
+            --predicate ${{ env.SBOM_FILE }} \
+            --yes \
+            --type cyclonedx \
+            ${{ inputs.image-name }}@${{ inputs.image-id }}
+        env:
+          COSIGN_EXPERIMENTAL: "1"

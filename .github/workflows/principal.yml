@@ -1,0 +1,70 @@
+name: principal
+
+on:
+  push:
+    branches:
+      - '*'
+    tags:
+      - 'v*'
+
+env:
+  IMAGE_NAME: ttl.sh/knabben/dos-poc
+
+jobs:
+  # Job responsible to extract the tags, branches and settings parameters
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Prepare environment
+      id: prep
+      run: |
+        echo "::group::Environment Variables"
+        echo "IMAGE_NAME: ${{ env.IMAGE_NAME }}"
+        echo "::endgroup::"
+        
+        BRANCH=${GITHUB_REF##*/}
+        TS=$(date +%s)
+        REVISION=${GITHUB_SHA::8}
+        IMMUTABLE_TAG="${BRANCH}-${REVISION}-${TS}"
+        
+        MUTABLE_TAG=canary
+        if [[ $GITHUB_REF == refs/tags/* ]]; then
+          IMMUTABLE_TAG=${GITHUB_REF/refs\/tags\//}
+          MUTABLE_TAG=latest
+        fi
+        
+        echo BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') >> $GITHUB_OUTPUT
+        echo MUTABLE_TAG=${MUTABLE_TAG} >> $GITHUB_OUTPUT
+        echo IMMUTABLE_TAG=${IMMUTABLE_TAG} >> $GITHUB_OUTPUT
+        echo IMAGE_NAME=${IMAGE_NAME} >> $GITHUB_OUTPUT
+    outputs:
+      IMMUTABLE_TAG: ${{ steps.prep.outputs.IMMUTABLE_TAG }}
+      MUTABLE_TAG: ${{ steps.prep.outputs.MUTABLE_TAG }}
+      IMAGE_NAME: ${{ steps.prep.outputs.IMAGE_NAME }}
+      BUILD_DATE: ${{ steps.prep.outputs.BUILD_DATE }}
+
+  # Unit tests for the projects imported from test.yml
+  tests:
+    needs: [prepare]
+    uses: ./.github/workflows/test.yml
+
+  # Build and push of the docker image, requires both environment and tests jobs
+  build:
+    if: ${{ github.ref == 'refs/heads/main' || contains(github.ref, 'refs/tags/v') }}
+    needs: [prepare, tests]
+    uses: ./.github/workflows/build.yml
+    with:
+      image-name: ${{ needs.prepare.outputs.IMAGE_NAME }}
+      immutable-tag: ${{ needs.prepare.outputs.IMMUTABLE_TAG }}
+      mutable-tag: ${{ needs.prepare.outputs.MUTABLE_TAG }}
+
+  sign:
+    if: ${{ github.ref == 'refs/heads/main' || contains(github.ref, 'refs/tags/v') }}
+    needs: [prepare, build]
+    uses: ./.github/workflows/sign.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      image-id: ${{ needs.build.outputs.IMAGE_ID }}
+      image-name: ${{ needs.prepare.outputs.IMAGE_NAME}}

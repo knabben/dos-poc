@@ -3,6 +3,15 @@
 HTTPS/2 Server with vulnerable version of `golang.org/x/net`, rapid reset attack got to be known last
 year, impacting multiple big cloud providers and CDNs, with the record of 201MI RPS.
 
+### Branches and releases
+
+Every new branch run units tests and DO NOT build an image. Branches merged on `main` generate a 
+new image in ttl.sh registry with the mutable tag `canary` and immutable tag as `main-${REVISION}-${TS}`.
+
+All tags are released as `latest` for the mutable tag and `semver` for the immutable tags.
+
+### Scanning
+
 **WARNING: Do not use the example without FIXING the version**
 
 More on:
@@ -39,3 +48,5 @@ $ go run main.go
 
 2024/03/03 09:39:26 Starting to listen HTTPS server on :6443
 ```
+
+Follow the github actions folder for more details.
