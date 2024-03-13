@@ -1,0 +1,34 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: dos-poc
+spec:
+  ports:
+  - name: https
+    port: 6443
+    protocol: TCP
+    targetPort: https
+  selector:
+    app: dos-poc
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dospoc
+spec:
+  selector:
+    matchLabels:
+      app: dospoc
+  template:
+    metadata:
+      labels:
+        app: dospoc
+    spec:
+      containers:
+      - image: ttl.sh/knabben/dos-poc:canary
+        name: app
+        ports:
+        - containerPort: 6443
+          name: https
+          protocol: TCP

@@ -1,0 +1,5 @@
+resources:
+- ../../base
+images:
+- name: ttl.sh/knabben/dos-poc
+  newTag: canary

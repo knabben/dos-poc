@@ -13,7 +13,7 @@ spec:
     spec:
       containers:
         - name: app
-          image: ttl.sh/knabben/dos-poc:latest
+          image: ttl.sh/knabben/dos-poc:0.0.1
           ports:
             - name: https
               containerPort: 6443
