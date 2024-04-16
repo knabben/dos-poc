@@ -62,7 +62,7 @@ func configureServer() (server *http.Server, err error) {
 
 // handler returns the response for a particular HTTP path
 func handler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte(fmt.Sprintf("HTTP request from: %s\n", r.RemoteAddr))) // nolint
+	w.Write([]byte(fmt.Sprintf("HTTPS request from: %s\n", r.RemoteAddr))) // nolint
 	w.Write([]byte(fmt.Sprintf("Protocol: %s", r.Proto)))                 // nolint
 }
 
